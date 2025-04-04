@@ -1,6 +1,7 @@
 streamlit
 ccxt
-pandas
-pandas_ta
+pandas==1.5.3
+numpy==1.24.4
+pandas_ta==0.3.14b0
 xgboost
 scikit-learn
