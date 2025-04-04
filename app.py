@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import ccxt
+import requests
 from datetime import datetime
 from xgboost import XGBClassifier, XGBRegressor
 from sklearn.model_selection import train_test_split
@@ -9,20 +9,33 @@ import pandas_ta as ta
 st.set_page_config(layout="wide")
 st.title("📈 Real-Time Crypto Signal Dashboard")
 
-binance = ccxt.binance({
-    'enableRateLimit': True
-})
-
 @st.cache_data(ttl=300)
-def fetch_ohlcv_df(symbol, timeframe='5m', limit=500):
-    ohlcv = binance.fetch_ohlcv(symbol, timeframe=timeframe, limit=limit)
-    df = pd.DataFrame(ohlcv, columns=['Date', 'Open', 'High', 'Low', 'Close', 'Volume'])
+def fetch_ohlcv_df(symbol, interval='5m', limit=500):
+    symbol_clean = symbol.replace("/", "")  # e.g., BTC/USDT → BTCUSDT
+    url = f"https://api.allorigins.win/raw?url=https://api.binance.com/api/v3/klines?symbol={symbol_clean}&interval={interval}&limit={limit}"
+
+    res = requests.get(url)
+    if res.status_code != 200:
+        st.error(f"❌ Failed to fetch OHLCV data for {symbol}")
+        return None
+
+    data = res.json()
+    df = pd.DataFrame(data, columns=[
+        'Date', 'Open', 'High', 'Low', 'Close', 'Volume',
+        'CloseTime', 'QuoteAssetVolume', 'NumberOfTrades',
+        'TakerBuyBaseAssetVolume', 'TakerBuyQuoteAssetVolume', 'Ignore'
+    ])
+    df = df[['Date', 'Open', 'High', 'Low', 'Close', 'Volume']]
     df['Date'] = pd.to_datetime(df['Date'], unit='ms')
     df.set_index('Date', inplace=True)
+    df = df.astype(float)
     return df
 
 def train_predict(symbol):
     df = fetch_ohlcv_df(symbol)
+    if df is None or df.empty:
+        return None
+
     df.ta.rsi(length=14, append=True)
     df.ta.ema(length=50, append=True)
     df.ta.ema(length=200, append=True)
