@@ -9,7 +9,9 @@ import pandas_ta as ta
 st.set_page_config(layout="wide")
 st.title("📈 Real-Time Crypto Signal Dashboard")
 
-binance = ccxt.binance()
+binance = ccxt.binance({
+    'enableRateLimit': True
+})
 
 @st.cache_data(ttl=300)
 def fetch_ohlcv_df(symbol, timeframe='5m', limit=500):
